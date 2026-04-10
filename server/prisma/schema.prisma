@@ -1,0 +1,576 @@
+// ============================================================================
+// Veterinary Clinic & Pet Shop Management System
+// Prisma Schema — MySQL
+// ============================================================================
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Enums
+// ────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  super_admin
+  branch_mgr
+  veterinarian
+  receptionist
+  sales_staff
+  groomer
+  accountant
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Species {
+  dog
+  cat
+  bird
+  hamster
+  rabbit
+  fish
+  reptile
+  other
+}
+
+enum PetGender {
+  male
+  female
+  unknown
+}
+
+enum MovementType {
+  import_stock
+  export_stock
+  adjustment
+  transfer
+  return_stock
+}
+
+enum ServiceCategory {
+  medical
+  grooming
+  spa
+  hotel
+  vaccination
+  surgery
+  other
+}
+
+enum AppointmentType {
+  medical
+  grooming
+  vaccination
+  surgery
+  checkup
+  hotel
+}
+
+enum AppointmentStatus {
+  scheduled
+  confirmed
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+enum BookingStatus {
+  booked
+  checked_in
+  checked_out
+  cancelled
+}
+
+enum InvoiceType {
+  sale
+  service
+  mixed
+}
+
+enum InvoiceStatus {
+  draft
+  pending
+  paid
+  partial
+  voided
+}
+
+enum ItemType {
+  product
+  service
+}
+
+enum PaymentMethod {
+  cash
+  card
+  transfer
+  momo
+  zalopay
+  vnpay
+  other
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Models
+// ────────────────────────────────────────────────────────────────────────────
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(20)
+  name      String   @db.VarChar(200)
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+  customers       Customer[]
+  pets            Pet[]
+  branchStocks    BranchStock[]
+  stockMovements  StockMovement[]
+  appointments    Appointment[]
+  medicalRecords  MedicalRecord[]
+  vaccinations    Vaccination[]
+  hotelBookings   HotelBooking[]
+  invoices        Invoice[]
+  payments        Payment[]
+
+  @@map("branches")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  branchId     Int       @map("branch_id")
+  username     String    @unique @db.VarChar(50)
+  email        String    @unique @db.VarChar(100)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  fullName     String    @map("full_name") @db.VarChar(200)
+  phone        String?   @db.VarChar(20)
+  role         UserRole
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  assignedAppointments Appointment[]    @relation("AssignedUser")
+  createdAppointments  Appointment[]    @relation("AppointmentCreator")
+  stockMovements       StockMovement[]
+  medicalRecords       MedicalRecord[]  @relation("Veterinarian")
+  vaccinations         Vaccination[]    @relation("VaccinationVet")
+  createdInvoices      Invoice[]        @relation("InvoiceCreator")
+  createdPayments      Payment[]        @relation("PaymentCreator")
+
+  @@index([branchId], map: "idx_users_branch_id")
+  @@index([role], map: "idx_users_role")
+  @@map("users")
+}
+
+model Customer {
+  id            Int       @id @default(autoincrement())
+  branchId      Int       @map("branch_id")
+  code          String    @unique @db.VarChar(20)
+  fullName      String    @map("full_name") @db.VarChar(200)
+  phone         String    @db.VarChar(20)
+  email         String?   @db.VarChar(100)
+  address       String?   @db.Text
+  dateOfBirth   DateTime? @map("date_of_birth")
+  gender        Gender
+  idNumber      String?   @map("id_number") @db.VarChar(50)
+  note          String?   @db.Text
+  loyaltyPoints Int       @default(0) @map("loyalty_points")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  pets          Pet[]
+  appointments  Appointment[]
+  hotelBookings HotelBooking[]
+  invoices      Invoice[]
+
+  @@index([branchId], map: "idx_customers_branch_id")
+  @@index([phone], map: "idx_customers_phone")
+  @@index([fullName], map: "idx_customers_full_name")
+  @@map("customers")
+}
+
+model Pet {
+  id          Int        @id @default(autoincrement())
+  customerId  Int        @map("customer_id")
+  branchId    Int        @map("branch_id")
+  code        String     @unique @db.VarChar(20)
+  name        String     @db.VarChar(100)
+  species     Species
+  breed       String?    @db.VarChar(100)
+  color       String?    @db.VarChar(50)
+  gender      PetGender  @default(unknown)
+  dateOfBirth DateTime?  @map("date_of_birth")
+  weight      Decimal?   @db.Decimal(5, 2)
+  microchipId String?    @map("microchip_id") @db.VarChar(50)
+  photoUrl    String?    @map("photo_url") @db.VarChar(500)
+  isNeutered  Boolean    @default(false) @map("is_neutered")
+  allergies   String?    @db.Text
+  note        String?    @db.Text
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+
+  appointments   Appointment[]
+  medicalRecords MedicalRecord[]
+  vaccinations   Vaccination[]
+  hotelBookings  HotelBooking[]
+
+  @@index([customerId], map: "idx_pets_customer_id")
+  @@index([branchId], map: "idx_pets_branch_id")
+  @@map("pets")
+}
+
+model ProductCategory {
+  id          Int      @id @default(autoincrement())
+  parentId    Int?     @map("parent_id")
+  name        String   @db.VarChar(200)
+  slug        String   @unique @db.VarChar(200)
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent   ProductCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children ProductCategory[] @relation("CategoryHierarchy")
+
+  products Product[]
+
+  @@index([parentId], map: "idx_product_categories_parent_id")
+  @@map("product_categories")
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  categoryId     Int?     @map("category_id")
+  sku            String   @unique @db.VarChar(50)
+  barcode        String?  @db.VarChar(50)
+  name           String   @db.VarChar(300)
+  description    String?  @db.Text
+  unit           String   @default("cái") @db.VarChar(30)
+  costPrice      Decimal  @default(0) @map("cost_price") @db.Decimal(12, 2)
+  sellingPrice   Decimal  @default(0) @map("selling_price") @db.Decimal(12, 2)
+  isPrescription Boolean  @default(false) @map("is_prescription")
+  photoUrl       String?  @map("photo_url") @db.VarChar(500)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  category ProductCategory? @relation(fields: [categoryId], references: [id])
+
+  branchStocks   BranchStock[]
+  stockMovements StockMovement[]
+  prescriptions  Prescription[]
+  invoiceItems   InvoiceItem[]   @relation("InvoiceItemProduct")
+
+  @@index([categoryId], map: "idx_products_category_id")
+  @@map("products")
+}
+
+model BranchStock {
+  id          Int      @id @default(autoincrement())
+  branchId    Int      @map("branch_id")
+  productId   Int      @map("product_id")
+  quantity    Int      @default(0)
+  minQuantity Int      @default(5) @map("min_quantity")
+  maxQuantity Int?     @map("max_quantity")
+  location    String?  @db.VarChar(100)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([branchId, productId], map: "uq_branch_stock_branch_product")
+  @@index([branchId], map: "idx_branch_stock_branch_id")
+  @@index([productId], map: "idx_branch_stock_product_id")
+  @@map("branch_stock")
+}
+
+model StockMovement {
+  id            Int          @id @default(autoincrement())
+  branchId      Int          @map("branch_id")
+  productId     Int          @map("product_id")
+  userId        Int          @map("user_id")
+  type          MovementType
+  quantity      Int
+  referenceType String?      @map("reference_type") @db.VarChar(50)
+  referenceId   Int?         @map("reference_id")
+  note          String?      @db.Text
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([branchId], map: "idx_stock_movements_branch_id")
+  @@index([productId], map: "idx_stock_movements_product_id")
+  @@index([createdAt], map: "idx_stock_movements_created_at")
+  @@map("stock_movements")
+}
+
+model Service {
+  id          Int             @id @default(autoincrement())
+  category    ServiceCategory
+  code        String          @unique @db.VarChar(20)
+  name        String          @db.VarChar(300)
+  description String?         @db.Text
+  basePrice   Decimal         @default(0) @map("base_price") @db.Decimal(12, 2)
+  durationMin Int             @default(30) @map("duration_min")
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  appointmentServices AppointmentService[]
+  invoiceItems        InvoiceItem[]        @relation("InvoiceItemService")
+
+  @@map("services")
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  branchId        Int               @map("branch_id")
+  customerId      Int               @map("customer_id")
+  petId           Int               @map("pet_id")
+  assignedUserId  Int?              @map("assigned_user_id")
+  appointmentDate DateTime          @map("appointment_date") @db.Date
+  startTime       String            @map("start_time") @db.VarChar(10)
+  endTime         String?           @map("end_time") @db.VarChar(10)
+  type            AppointmentType
+  status          AppointmentStatus @default(scheduled)
+  reason          String?           @db.Text
+  note            String?           @db.Text
+  createdBy       Int               @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  branch       Branch    @relation(fields: [branchId], references: [id])
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  pet          Pet       @relation(fields: [petId], references: [id])
+  assignedUser User?     @relation("AssignedUser", fields: [assignedUserId], references: [id])
+  creator      User      @relation("AppointmentCreator", fields: [createdBy], references: [id])
+
+  appointmentServices AppointmentService[]
+  medicalRecords      MedicalRecord[]
+  hotelBookings       HotelBooking[]
+  invoices            Invoice[]
+
+  @@index([branchId], map: "idx_appointments_branch_id")
+  @@index([customerId], map: "idx_appointments_customer_id")
+  @@index([petId], map: "idx_appointments_pet_id")
+  @@index([appointmentDate], map: "idx_appointments_date")
+  @@map("appointments")
+}
+
+model AppointmentService {
+  id            Int     @id @default(autoincrement())
+  appointmentId Int     @map("appointment_id")
+  serviceId     Int     @map("service_id")
+  quantity      Int     @default(1)
+  unitPrice     Decimal @map("unit_price") @db.Decimal(12, 2)
+  discount      Decimal @default(0) @db.Decimal(12, 2)
+  note          String? @db.Text
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  service     Service     @relation(fields: [serviceId], references: [id])
+
+  @@index([appointmentId], map: "idx_appointment_services_appointment_id")
+  @@index([serviceId], map: "idx_appointment_services_service_id")
+  @@map("appointment_services")
+}
+
+model MedicalRecord {
+  id           Int       @id @default(autoincrement())
+  appointmentId Int      @map("appointment_id")
+  petId        Int       @map("pet_id")
+  vetId        Int       @map("vet_id")
+  branchId     Int       @map("branch_id")
+  visitDate    DateTime  @map("visit_date")
+  weight       Decimal?  @db.Decimal(5, 2)
+  temperature  Decimal?  @db.Decimal(4, 1)
+  heartRate    Int?      @map("heart_rate")
+  symptoms     String?   @db.Text
+  diagnosis    String?   @db.Text
+  treatment    String?   @db.Text
+  note         String?   @db.Text
+  followUpDate DateTime? @map("follow_up_date")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  appointment  Appointment @relation(fields: [appointmentId], references: [id])
+  pet          Pet         @relation(fields: [petId], references: [id])
+  vet          User        @relation("Veterinarian", fields: [vetId], references: [id])
+  branch       Branch      @relation(fields: [branchId], references: [id])
+
+  prescriptions Prescription[]
+
+  @@index([appointmentId], map: "idx_medical_records_appointment_id")
+  @@index([petId], map: "idx_medical_records_pet_id")
+  @@index([vetId], map: "idx_medical_records_vet_id")
+  @@map("medical_records")
+}
+
+model Prescription {
+  id              Int     @id @default(autoincrement())
+  medicalRecordId Int     @map("medical_record_id")
+  productId       Int     @map("product_id")
+  dosage          String? @db.VarChar(200)
+  frequency       String? @db.VarChar(100)
+  durationDays    Int?    @map("duration_days")
+  quantity        Int
+  unitPrice       Decimal @map("unit_price") @db.Decimal(12, 2)
+  note            String? @db.Text
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([medicalRecordId], map: "idx_prescriptions_medical_record_id")
+  @@index([productId], map: "idx_prescriptions_product_id")
+  @@map("prescriptions")
+}
+
+model Vaccination {
+  id              Int       @id @default(autoincrement())
+  petId           Int       @map("pet_id")
+  branchId        Int       @map("branch_id")
+  vetId           Int       @map("vet_id")
+  vaccineName     String    @map("vaccine_name") @db.VarChar(200)
+  vaccineBatch    String?   @map("vaccine_batch") @db.VarChar(100)
+  vaccinationDate DateTime  @map("vaccination_date") @db.Date
+  nextDueDate     DateTime? @map("next_due_date") @db.Date
+  note            String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  pet    Pet    @relation(fields: [petId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  vet    User   @relation("VaccinationVet", fields: [vetId], references: [id])
+
+  @@index([petId], map: "idx_vaccinations_pet_id")
+  @@index([branchId], map: "idx_vaccinations_branch_id")
+  @@map("vaccinations")
+}
+
+model HotelBooking {
+  id               Int           @id @default(autoincrement())
+  appointmentId    Int?          @map("appointment_id")
+  branchId         Int           @map("branch_id")
+  petId            Int           @map("pet_id")
+  customerId       Int           @map("customer_id")
+  roomNumber       String?       @map("room_number") @db.VarChar(20)
+  checkIn          DateTime      @map("check_in")
+  checkOut         DateTime?     @map("check_out")
+  expectedCheckOut DateTime      @map("expected_check_out")
+  dailyRate        Decimal       @map("daily_rate") @db.Decimal(12, 2)
+  status           BookingStatus @default(booked)
+  specialRequests  String?       @map("special_requests") @db.Text
+  note             String?       @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  branch      Branch       @relation(fields: [branchId], references: [id])
+  pet         Pet          @relation(fields: [petId], references: [id])
+  customer    Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([branchId], map: "idx_hotel_bookings_branch_id")
+  @@index([petId], map: "idx_hotel_bookings_pet_id")
+  @@index([customerId], map: "idx_hotel_bookings_customer_id")
+  @@map("hotel_bookings")
+}
+
+model Invoice {
+  id             Int           @id @default(autoincrement())
+  branchId       Int           @map("branch_id")
+  customerId     Int           @map("customer_id")
+  appointmentId  Int?          @map("appointment_id")
+  invoiceNumber  String        @unique @map("invoice_number") @db.VarChar(30)
+  type           InvoiceType
+  subtotal       Decimal       @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal       @default(0) @map("discount_amount") @db.Decimal(14, 2)
+  taxAmount      Decimal       @default(0) @map("tax_amount") @db.Decimal(14, 2)
+  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(14, 2)
+  status         InvoiceStatus @default(draft)
+  note           String?       @db.Text
+  createdBy      Int           @map("created_by")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  branch      Branch       @relation(fields: [branchId], references: [id])
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  creator     User         @relation("InvoiceCreator", fields: [createdBy], references: [id])
+
+  invoiceItems InvoiceItem[]
+  payments     Payment[]
+
+  @@index([branchId], map: "idx_invoices_branch_id")
+  @@index([customerId], map: "idx_invoices_customer_id")
+  @@index([createdAt], map: "idx_invoices_created_at")
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int      @map("invoice_id")
+  itemType    ItemType @map("item_type")
+  productId   Int?     @map("product_id")
+  serviceId   Int?     @map("service_id")
+  description String?  @db.VarChar(500)
+  quantity    Decimal  @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  discount    Decimal  @default(0) @db.Decimal(12, 2)
+  lineTotal   Decimal  @map("line_total") @db.Decimal(14, 2)
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id])
+  product Product? @relation("InvoiceItemProduct", fields: [productId], references: [id])
+  service Service? @relation("InvoiceItemService", fields: [serviceId], references: [id])
+
+  @@index([invoiceId], map: "idx_invoice_items_invoice_id")
+  @@index([productId], map: "idx_invoice_items_product_id")
+  @@index([serviceId], map: "idx_invoice_items_service_id")
+  @@map("invoice_items")
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  invoiceId   Int           @map("invoice_id")
+  branchId    Int           @map("branch_id")
+  amount      Decimal       @db.Decimal(14, 2)
+  method      PaymentMethod
+  referenceNo String?       @map("reference_no") @db.VarChar(100)
+  paidAt      DateTime      @default(now()) @map("paid_at")
+  note        String?       @db.Text
+  createdBy   Int           @map("created_by")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  creator User    @relation("PaymentCreator", fields: [createdBy], references: [id])
+
+  @@index([invoiceId], map: "idx_payments_invoice_id")
+  @@index([branchId], map: "idx_payments_branch_id")
+  @@map("payments")
+}

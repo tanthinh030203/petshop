@@ -991,7 +991,7 @@ project/
 │  ⚙️   │                                             │
 │        │                                             │
 ├────────┴─────────────────────────────────────────────┤
-│  © 2026 Yamagami Pet Clinic                          │  ← Footer
+│  © 2026 PetShop                                      │  ← Footer
 └──────────────────────────────────────────────────────┘
    Sidebar                     Main Content
 ```
@@ -1112,7 +1112,7 @@ Cài đặt
 # .env
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=yamagami_petclinic
+DB_NAME=petshop
 DB_USER=root
 DB_PASSWORD=your_password
 DB_DIALECT=mysql
@@ -1155,14 +1155,14 @@ export default prisma;
 
 ```env
 # .env
-DATABASE_URL="mysql://root:your_password@localhost:3306/yamagami_petclinic"
+DATABASE_URL="mysql://root:your_password@localhost:3306/petshop"
 ```
 
 ### 12.3 Khởi tạo Database
 
 ```bash
 # Tạo database trong MySQL Workbench hoặc CLI
-mysql -u root -p -e "CREATE DATABASE yamagami_petclinic CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p -e "CREATE DATABASE petshop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Generate Prisma Client (auto-generate TypeScript types)
 npx prisma generate
@@ -1184,11 +1184,11 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: yamagami-mysql
+    container_name: petshop-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: yamagami_petclinic
+      MYSQL_DATABASE: petshop
     ports:
       - "3306:3306"
     volumes:
@@ -1197,14 +1197,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: yamagami-redis
+    container_name: petshop-redis
     restart: always
     ports:
       - "6379:6379"
 
   server:
     build: ./server
-    container_name: yamagami-api
+    container_name: petshop-api
     restart: always
     ports:
       - "3000:3000"
@@ -1215,7 +1215,7 @@ services:
 
   client:
     build: ./client
-    container_name: yamagami-web
+    container_name: petshop-web
     restart: always
     ports:
       - "5173:80"
@@ -1228,4 +1228,4 @@ volumes:
 
 ---
 
-*Document generated for Yamagami Project — 2026-04-10*
+*Document generated for PetShop Project — 2026-04-10*

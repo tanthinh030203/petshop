@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: petshop-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-petshop123}
+      MYSQL_DATABASE: petshop
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7-alpine
+    container_name: petshop-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  server:
+    build: ./server
+    container_name: petshop-api
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file: ./server/.env
+    depends_on:
+      - mysql
+      - redis
+
+  client:
+    build: ./client
+    container_name: petshop-web
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mysql_data:
