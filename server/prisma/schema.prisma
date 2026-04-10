@@ -190,7 +190,7 @@ model Customer {
   email         String?   @db.VarChar(100)
   address       String?   @db.Text
   dateOfBirth   DateTime? @map("date_of_birth")
-  gender        Gender
+  gender        Gender?
   idNumber      String?   @map("id_number") @db.VarChar(50)
   note          String?   @db.Text
   loyaltyPoints Int       @default(0) @map("loyalty_points")

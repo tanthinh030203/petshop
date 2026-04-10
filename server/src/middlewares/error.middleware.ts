@@ -49,6 +49,18 @@ export const errorHandler = (
     }
   }
 
+  // Prisma validation errors (missing fields, wrong types)
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid data provided',
+      },
+    });
+    return;
+  }
+
   // Zod validation errors
   if (err instanceof ZodError) {
     res.status(400).json({
