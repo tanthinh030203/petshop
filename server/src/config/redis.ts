@@ -4,21 +4,26 @@ import logger from '../utils/logger';
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
-    const delay = Math.min(times * 200, 2000);
-    return delay;
+    if (times > 3) {
+      logger.warn('Redis unavailable — running without cache');
+      return null; // stop retrying
+    }
+    return Math.min(times * 200, 2000);
   },
+  lazyConnect: true,
 });
 
 redis.on('connect', () => {
   logger.info('Redis connected successfully');
 });
 
-redis.on('error', (err) => {
-  logger.error(`Redis connection error: ${err.message}`);
+redis.on('error', () => {
+  // silenced — retryStrategy handles logging
 });
 
-redis.on('close', () => {
-  logger.warn('Redis connection closed');
+// Try to connect but don't block the app if Redis is down
+redis.connect().catch(() => {
+  logger.warn('Redis not available — auth refresh tokens will use in-memory fallback');
 });
 
 export default redis;

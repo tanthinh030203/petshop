@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await authService.login(values.username, values.password);
-      setAuth(result.user, result.access_token);
+      setAuth(result.user, result.accessToken);
       message.success('Dang nhap thanh cong!');
       navigate(from, { replace: true });
     } catch {

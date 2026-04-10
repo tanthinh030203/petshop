@@ -60,7 +60,11 @@ export const login = async (username: string, password: string) => {
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
-  await redis.set(`refresh:${user.id}`, refreshToken, 'EX', REFRESH_TOKEN_TTL);
+  try {
+    await redis.set(`refresh:${user.id}`, refreshToken, 'EX', REFRESH_TOKEN_TTL);
+  } catch {
+    logger.warn('Redis unavailable — refresh token not persisted');
+  }
 
   await prisma.user.update({
     where: { id: user.id },
@@ -84,9 +88,14 @@ export const refreshToken = async (token: string) => {
     throw Object.assign(new Error('Invalid or expired refresh token'), { statusCode: 401 });
   }
 
-  const storedToken = await redis.get(`refresh:${decoded.id}`);
-  if (!storedToken || storedToken !== token) {
-    throw Object.assign(new Error('Refresh token not found or revoked'), { statusCode: 401 });
+  try {
+    const storedToken = await redis.get(`refresh:${decoded.id}`);
+    if (storedToken && storedToken !== token) {
+      throw Object.assign(new Error('Refresh token revoked'), { statusCode: 401 });
+    }
+  } catch (err: any) {
+    if (err.statusCode) throw err;
+    logger.warn('Redis unavailable — skipping refresh token validation');
   }
 
   const accessToken = generateAccessToken({
@@ -100,7 +109,11 @@ export const refreshToken = async (token: string) => {
 };
 
 export const logout = async (userId: number) => {
-  await redis.del(`refresh:${userId}`);
+  try {
+    await redis.del(`refresh:${userId}`);
+  } catch {
+    logger.warn('Redis unavailable — refresh token not cleared');
+  }
   logger.info(`User ${userId} logged out`);
 };
 

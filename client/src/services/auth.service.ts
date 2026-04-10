@@ -8,8 +8,8 @@ export const authService = {
       password,
     });
     const result = data.data;
-    localStorage.setItem('access_token', result.access_token);
-    localStorage.setItem('refresh_token', result.refresh_token);
+    localStorage.setItem('access_token', result.accessToken);
+    localStorage.setItem('refresh_token', result.refreshToken);
     localStorage.setItem('user', JSON.stringify(result.user));
     return result;
   },
@@ -17,14 +17,11 @@ export const authService = {
   async refresh(): Promise<string> {
     const refreshToken = localStorage.getItem('refresh_token');
     const { data } = await api.post<
-      ApiResponse<{ access_token: string; refresh_token: string }>
-    >('/auth/refresh', { refresh_token: refreshToken });
+      ApiResponse<{ accessToken: string }>
+    >('/auth/refresh', { refreshToken });
     const result = data.data;
-    localStorage.setItem('access_token', result.access_token);
-    if (result.refresh_token) {
-      localStorage.setItem('refresh_token', result.refresh_token);
-    }
-    return result.access_token;
+    localStorage.setItem('access_token', result.accessToken);
+    return result.accessToken;
   },
 
   async logout(): Promise<void> {

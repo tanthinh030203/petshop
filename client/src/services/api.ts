@@ -75,12 +75,12 @@ api.interceptors.response.use(
 
       try {
         const { data } = await api.post('/auth/refresh', {
-          refresh_token: refreshToken,
+          refreshToken,
         });
-        const newToken = data.data.access_token;
+        const newToken = data.data.accessToken;
         localStorage.setItem('access_token', newToken);
-        if (data.data.refresh_token) {
-          localStorage.setItem('refresh_token', data.data.refresh_token);
+        if (data.data.refreshToken) {
+          localStorage.setItem('refresh_token', data.data.refreshToken);
         }
         api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
         processQueue(null, newToken);
